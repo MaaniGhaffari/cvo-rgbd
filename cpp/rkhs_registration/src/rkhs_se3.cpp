@@ -30,7 +30,6 @@ rkhs_se3::rkhs_se3():
     T(Eigen::Vector3f::Zero()),        // initialize translation matrix to zeros
     transform(Eigen::Affine3f::Identity())    // initialize transformation to I
 {
-    
 }
 
 rkhs_se3::~rkhs_se3(){
@@ -171,7 +170,6 @@ void rkhs_se3::compute_step_size(){
     
     // compute xi*z+v, xi^2*z+xi*v, xi^3*z+xi^2*v, xi^4*z+xi^3*v
     Eigen::MatrixXf xiz(num_moving,cloud_y.cols());
-    
     for(int i=0; i<num_moving; i++) 
         xiz.row(i) = omega.transpose().cross(cloud_y.row(i))+v.transpose(); // (xi*z+v)
     
@@ -283,7 +281,8 @@ void rkhs_se3::set_pcd(string fixed_pth, string moving_pth){
     cloud_y = moving.getMatrixXfMap(3,8,0).transpose();
     
     // initialization of parameters
-    A.resize(num_fixed,num_moving); 
+    A.resize(num_fixed,num_moving);
+    A.setZero(); 
     R = Eigen::Matrix3f::Identity(3,3); // initialize rotation matrix to I
     T = Eigen::Vector3f::Zero();        // initialize translation matrix to zeros
     transform = Eigen::Affine3f::Identity();    // initialize transformation to I
