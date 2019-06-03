@@ -25,10 +25,12 @@ rkhs_se3::rkhs_se3():
     min_step(2*1.0e-1),    // minimum integration step
     eps(5*1.0e-5),         // threshold for stopping the function
     eps_2(1.0e-5),         // threshold for se3 distance
+    // A(num_fixed,num_moving),           // initialize sparse coefficient matrix
     R(Eigen::Matrix3f::Identity(3,3)), // initialize rotation matrix to I
     T(Eigen::Vector3f::Zero()),        // initialize translation matrix to zeros
     transform(Eigen::Affine3f::Identity())    // initialize transformation to I
 {
+    
 }
 
 rkhs_se3::~rkhs_se3(){
@@ -94,20 +96,28 @@ void rkhs_se3::se_kernel(const float l, const float s2){
      * @param cloud_x: n-by-d target point cloud as matrix [x0,y0,z0; x1,y1,x1; ...]
      * @param cloud_y: m-by-d source point cloud as matrix
      *                 n, m are number of observation, d is the dimension.
-     * @return k: n-by-m kernel matrix 
+     * @return A: sparsified coefficient matrix 
      */
-
-    // calcuate distance D2 using vectorized method. 
-    // // D2 = (X-Z)^2 = X^2+Z^2-2*X*Z
-    Eigen::MatrixXf X2 = cloud_x.array().pow(2).matrix();
-    Eigen::MatrixXf Z2 = cloud_y.array().pow(2).matrix();
-    Eigen::MatrixXf sumX2 = X2.rowwise().sum()*Eigen::MatrixXf::Ones(1,num_moving);
-    Eigen::MatrixXf sumZ2 = Eigen::MatrixXf::Ones(num_fixed,1)*Z2.rowwise().sum().transpose();
     
-    Eigen::MatrixXf D2 = sumX2 + sumZ2 - 2*cloud_x*cloud_y.transpose();
-    
-    // // sparsified isotropic SE kernel
-    A = (s2* (-D2.array()/(2.0*l*l)).exp().matrix()).sparseView(1,sp_thres);
+    // convert k threshold to d2 threshold (so that we only need to calculate k when needed)
+    float d2_thres = -2.0*l*l*log(sp_thres/s2);
+    typedef Eigen::Triplet<float> T;
+    std::vector<T> tripletList;
+    tripletList.reserve(10000);
+    // loop through points
+    for(int i=0; i<num_fixed; ++i){
+        for(int j=0; j<num_moving; ++j){
+            // d2 = (x-y)^2
+            float d2 = (cloud_x.row(i)-cloud_y.row(j)).squaredNorm();
+            if(d2<d2_thres){
+                float k = s2*exp(-d2/(2.0*l*l));
+                float ci = color_inner_product(i,j);
+                tripletList.push_back(T(i,j,ci*k));
+            }
+        }
+    }
+    // form A
+    A.setFromTriplets(tripletList.begin(), tripletList.end());
     A.makeCompressed();
 }
 
@@ -119,6 +129,7 @@ void rkhs_se3::compute_flow(){
     omega = Eigen::Vector3f::Zero();
     v = Eigen::Vector3f::Zero();
     group_ids.clear();
+    group_ids.reserve(10000);
 
     // loop through points in cloud_x
     for(int i=0; i<num_fixed; ++i){
@@ -135,13 +146,10 @@ void rkhs_se3::compute_flow(){
         // loop through used ids in ith row
         for(Eigen::SparseMatrix<float,Eigen::RowMajor>::InnerIterator it(A,i); it; ++it){
             used_ids.push_back(it.col());   // take out current index
-
-            // calculate color inner product
-            float ci = color_inner_product(i,used_ids[j]);
-            Ai(0,j) = ci*it.value();    // extract current value in A
+            Ai(0,j) = it.value();    // extract current value in A
             cross_xy.row(j) = cloud_x.row(i).cross(cloud_y.row(used_ids[j]));
             diff_yx.row(j) = cloud_y.row(used_ids[j])-cloud_x.row(i);
-            j++;
+            ++j;
         }
 
         partial_omega = 1/c*Ai*cross_xy;
@@ -216,12 +224,9 @@ void rkhs_se3::compute_step_size(){
             // epsil_i = -1/(2*l^2) * (norm(xi2z).^2 + 2*dot(xiz,xi3z) + 2*dot(xi4z,diff_xy))
             epsil_i.row(j) = -temp_coef * (epsil_const.row(idx)\
                             + 2.0*xi4z.row(idx)*diff_xy.row(j).transpose());
-            
-            // calculate color inner product
-            float ci = color_inner_product(i,idx);
 
             // form Ai
-            Ai(0,j) = ci*it.value();
+            Ai(0,j) = it.value();
 
             ++j;
         }
@@ -276,8 +281,9 @@ void rkhs_se3::set_pcd(string fixed_pth, string moving_pth){
     // convert pcl to eigen matrices
     cloud_x = fixed.getMatrixXfMap(3,8,0).transpose();
     cloud_y = moving.getMatrixXfMap(3,8,0).transpose();
-
+    
     // initialization of parameters
+    A.resize(num_fixed,num_moving); 
     R = Eigen::Matrix3f::Identity(3,3); // initialize rotation matrix to I
     T = Eigen::Vector3f::Zero();        // initialize translation matrix to zeros
     transform = Eigen::Affine3f::Identity();    // initialize transformation to I
