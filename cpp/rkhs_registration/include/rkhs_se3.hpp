@@ -63,9 +63,7 @@ class rkhs_se3{
 
         Eigen::Matrix3f R;   // orientation
         Eigen::Vector3f T;   // translation
-        Eigen::MatrixXf K;   // isotropic SE kernel
         Eigen::SparseMatrix<float,Eigen::RowMajor> A;      // coefficient matrix, represented in sparse
-        vector< vector<int> > group_ids;    // nonzero indicies of coefficient matrix A
         Eigen::Vector3f omega;  // so(3) part of twist
         Eigen::Vector3f v;      // R^3 part of twist
 
@@ -89,18 +87,18 @@ class rkhs_se3{
          *              ex. [2,1,3] for 2x^2+x+3
          * @return roots: roots of the polynomial in complex number. ex. a+bi
          */
-        Eigen::VectorXcf poly_solver(Eigen::VectorXf& coef);
+        inline Eigen::VectorXcf poly_solver(const Eigen::VectorXf& coef);
 
         /**
          * @brief calculate the se3 distance for giving R and T
          * @return d: se3 distance of given R and T
          */
-        float dist_se3(Eigen::Matrix3f& R, Eigen::Vector3f& T);
+        inline float dist_se3(const Eigen::Matrix3f& R, const Eigen::Vector3f& T);
 
         /**
          * @brief update transformation matrix
          */
-        void update_tf();
+        inline void update_tf();
 
         /**
          * @brief compute color inner product of ith row in fixed and jth row in moving
@@ -108,7 +106,7 @@ class rkhs_se3{
          * @param j: indxe of desired row in moving
          * @return CI: the inner product
          */
-        float color_inner_product(const int i, const int j);
+        inline float color_inner_product(const int i, const int j);
         
         /**
          * @brief isotropic (same length-scale for all dimensions) squared-exponential kernel
@@ -140,7 +138,7 @@ class rkhs_se3{
         /**
          * @brief initialize new point cloud and extract pcd as matrices
          */
-        void set_pcd(string fixed_pth, string moving_pth);
+        void set_pcd( string fixed_pth, string moving_pth);
 
         /**
          * @brief align two rgbd pointcloud
