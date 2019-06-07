@@ -25,7 +25,6 @@ rkhs_se3::rkhs_se3():
     min_step(2*1.0e-1),    // minimum integration step
     eps(5*1.0e-5),         // threshold for stopping the function
     eps_2(1.0e-5),         // threshold for se3 distance
-    // A(num_fixed,num_moving),           // initialize sparse coefficient matrix
     R(Eigen::Matrix3f::Identity(3,3)), // initialize rotation matrix to I
     T(Eigen::Vector3f::Zero()),        // initialize translation matrix to zeros
     transform(Eigen::Affine3f::Identity())    // initialize transformation to I
@@ -37,13 +36,13 @@ rkhs_se3::~rkhs_se3(){
 
 void rkhs_se3::remove_nan_points(){
     // remove nan points
-    vector<int> nan_ids;
+    std::vector<int> nan_ids;
     pcl::removeNaNFromPointCloud(fixed, fixed, nan_ids);
     nan_ids.clear();
     pcl::removeNaNFromPointCloud(moving,moving,nan_ids);
 }
 
-Eigen::VectorXcf rkhs_se3::poly_solver(Eigen::VectorXf& coef){
+inline Eigen::VectorXcf rkhs_se3::poly_solver(const Eigen::VectorXf& coef){
     // extract order
     int order = coef.size()-1;
     Eigen::VectorXcf roots;
@@ -62,7 +61,7 @@ Eigen::VectorXcf rkhs_se3::poly_solver(Eigen::VectorXf& coef){
     return roots;
 }
 
-float rkhs_se3::dist_se3(Eigen::Matrix3f& R, Eigen::Vector3f& T){
+inline float rkhs_se3::dist_se3(const Eigen::Matrix3f& R, const Eigen::Vector3f& T){
     // create transformation matrix
     Eigen::Matrix4f temp_transform = Eigen::Matrix4f::Identity();
     temp_transform.block<3,3>(0,0)=R;
@@ -74,14 +73,14 @@ float rkhs_se3::dist_se3(Eigen::Matrix3f& R, Eigen::Vector3f& T){
     return d;
 }
 
-void rkhs_se3::update_tf(){
+inline void rkhs_se3::update_tf(){
     // transform = [R', -R'*T; 0,0,0,1]
     transform.matrix().block<3,3>(0,0) = R.transpose();
     transform.matrix().block<3,1>(0,3) = -R.transpose()*T;
 }
 
 
-float rkhs_se3::color_inner_product(const int i, const int j){
+inline float rkhs_se3::color_inner_product(const int i, const int j){
     // compute color inner product for fixed[i] and moving[j]
     float CI = color_scale*(float(fixed.points[i].r)*float(moving.points[j].r)+
                     float(fixed.points[i].g)*float(moving.points[j].g)+
@@ -127,35 +126,29 @@ void rkhs_se3::compute_flow(){
     // some initialization of the variables
     omega = Eigen::Vector3f::Zero();
     v = Eigen::Vector3f::Zero();
-    group_ids.clear();
-    group_ids.reserve(10000);
 
     // loop through points in cloud_x
     for(int i=0; i<num_fixed; ++i){
         // initialize reused varaibles
-        vector<int> used_ids;
-        int num_used_ids = A.innerVector(i).nonZeros();
-        Eigen::MatrixXf Ai = Eigen::MatrixXf::Zero(1,num_used_ids);
-        Eigen::MatrixXf cross_xy = Eigen::MatrixXf::Zero(num_used_ids,3);
-        Eigen::MatrixXf diff_yx = Eigen::MatrixXf::Zero(num_used_ids,3);
+        int num_non_zeros = A.innerVector(i).nonZeros();
+        Eigen::MatrixXf Ai = Eigen::MatrixXf::Zero(1,num_non_zeros);
+        Eigen::MatrixXf cross_xy = Eigen::MatrixXf::Zero(num_non_zeros,3);
+        Eigen::MatrixXf diff_yx = Eigen::MatrixXf::Zero(num_non_zeros,3);
         Eigen::Matrix<float, 1, 3> partial_omega;
         Eigen::Matrix<float, 1, 3> partial_v;
 
         int j = 0;
-        // loop through used ids in ith row
+        // loop through non-zero ids in ith row
         for(Eigen::SparseMatrix<float,Eigen::RowMajor>::InnerIterator it(A,i); it; ++it){
-            used_ids.push_back(it.col());   // take out current index
+            int idx = it.col();
             Ai(0,j) = it.value();    // extract current value in A
-            cross_xy.row(j) = cloud_x.row(i).cross(cloud_y.row(used_ids[j]));
-            diff_yx.row(j) = cloud_y.row(used_ids[j])-cloud_x.row(i);
+            cross_xy.row(j) = cloud_x.row(i).cross(cloud_y.row(idx));
+            diff_yx.row(j) = cloud_y.row(idx)-cloud_x.row(i);
             ++j;
         }
 
         partial_omega = 1/c*Ai*cross_xy;
         partial_v = 1/d*Ai*diff_yx;
-
-        // collect this used_ids into group_ids
-        group_ids.push_back(used_ids);
 
         // sum up them to class-wide variable
         omega += partial_omega.transpose();
@@ -196,52 +189,38 @@ void rkhs_se3::compute_step_size(){
     // loops through points in cloud_x to calculate the derivatives
     for(int i=0; i<num_fixed; ++i){
         // initialization
-        Eigen::MatrixXf diff_xy(group_ids[i].size(),3);
-        Eigen::MatrixXf beta_i(group_ids[i].size(),1);
-        Eigen::MatrixXf gamma_i(group_ids[i].size(),1);
-        Eigen::MatrixXf delta_i(group_ids[i].size(),1);
-        Eigen::MatrixXf epsil_i(group_ids[i].size(),1);
-        Eigen::MatrixXf Ai = Eigen::MatrixXf::Zero(1,group_ids[i].size());
+        int num_non_zeros = A.innerVector(i).nonZeros();
+        Eigen::MatrixXf diff_xy(num_non_zeros,3);
         
         int j=0;
         // loop through used index in ith row
 
         for(Eigen::SparseMatrix<float,Eigen::RowMajor>::InnerIterator it(A,i); it; ++it){
-            int idx = group_ids[i][j];
+            int idx = it.col();
 
             // diff_xy = x[i] - y[used_idx[j]]
             diff_xy.row(j) = cloud_x.row(i) - cloud_y.row(idx);    
             // beta_i = -1/l^2 * dot(xiz,diff_xy)
-            beta_i.row(j) = -2.0*temp_coef * xiz.row(idx)*diff_xy.row(j).transpose();
+            float beta_ij = (-2.0*temp_coef * xiz.row(idx)*diff_xy.row(j).transpose())(0,0);
             // gamma_i = -1/(2*l^2) * (norm(xiz).^2 + 2*dot(xi2z,diff_xy))
-            gamma_i.row(j) = -temp_coef * (normxiz2.row(idx)\
-                            + 2.0*xi2z.row(idx)*diff_xy.row(j).transpose());
+            float gamma_ij = (-temp_coef * (normxiz2.row(idx)\
+                            + 2.0*xi2z.row(idx)*diff_xy.row(j).transpose()))(0,0);
             // delta_i = 1/l^2 * (dot(-xiz,xi2z) + dot(-xi3z,diff_xy))
-            delta_i.row(j) = 2.0*temp_coef * (xiz_dot_xi2z.row(idx)\
-                            + (-xi3z.row(idx)*diff_xy.row(j).transpose()));
+            float delta_ij = (2.0*temp_coef * (xiz_dot_xi2z.row(idx)\
+                            + (-xi3z.row(idx)*diff_xy.row(j).transpose())))(0,0);
             // epsil_i = -1/(2*l^2) * (norm(xi2z).^2 + 2*dot(xiz,xi3z) + 2*dot(xi4z,diff_xy))
-            epsil_i.row(j) = -temp_coef * (epsil_const.row(idx)\
-                            + 2.0*xi4z.row(idx)*diff_xy.row(j).transpose());
+            float epsil_ij = (-temp_coef * (epsil_const.row(idx)\
+                            + 2.0*xi4z.row(idx)*diff_xy.row(j).transpose()))(0,0);
 
-            // form Ai
-            Ai(0,j) = it.value();
+            float A_ij = it.value();
+            B += A_ij * beta_ij;
+            C += A_ij * (gamma_ij+beta_ij*beta_ij/2.0);
+            D += A_ij * (delta_ij+beta_ij*gamma_ij + beta_ij*beta_ij*beta_ij/6.0);
+            E += A_ij * (epsil_ij+beta_ij*delta_ij+1/2.0*beta_ij*beta_ij*gamma_ij\
+                        + 1/2.0*gamma_ij*gamma_ij + 1/24.0*beta_ij*beta_ij*beta_ij*beta_ij);
 
             ++j;
         }
-        
-        Eigen::MatrixXf beta2_i = beta_i.array().pow(2.0).matrix();   // beta_i.^2
-        Eigen::MatrixXf beta3_i = beta2_i.array().cwiseProduct(beta_i.array()).matrix();   // beta_i.^3
-        Eigen::MatrixXf beta4_i = beta3_i.array().cwiseProduct(beta_i.array()).matrix();   // beta_i.^4
-        Eigen::MatrixXf beta_gamma_i = beta_i.array().cwiseProduct(gamma_i.array()).matrix();   // beta.*gamma
-        Eigen::MatrixXf beta_delta_i = beta_i.array().cwiseProduct(delta_i.array()).matrix();   // beta.*delta
-        Eigen::MatrixXf beta2_gamma_i = beta2_i.array().cwiseProduct(gamma_i.array()).matrix(); // beta.^2.*delta
-        Eigen::MatrixXf gamma2_i = gamma_i.array().pow(2.0).matrix(); // gamma.^2
-
-        // coefficients
-        B += (Ai * beta_i)(0);
-        C += (Ai * (gamma_i + beta2_i/2.0))(0);
-        D += (Ai * (delta_i + beta_gamma_i + beta3_i/6.0))(0);
-        E += (Ai * (epsil_i + beta_delta_i +1/2.0*beta2_gamma_i + 1/2.0*gamma2_i + 1/24.0*beta4_i))(0);
     }
 
     // create polynomial coefficient vector
