@@ -1,0 +1,2 @@
+this folder is used for writing downsampled point clouds.
+a few samples are provided for tetsing.

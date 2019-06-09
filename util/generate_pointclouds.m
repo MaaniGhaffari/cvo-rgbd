@@ -89,11 +89,10 @@ dataset_path = ...
 assoc_filename = strcat(dataset_path, 'assoc.txt');
 assoc = import_assoc_file(assoc_filename);
 
-
+folder = 'pcd_full/';
 % create point clouds
 for i = 1:size(assoc,1)
    pc_name = assoc(i,1); % using RGB image timestamp
-   folder = 'pcd_full/';
    % load RGB image
    rgb = imread(char(strcat(dataset_path, assoc(i,2))));
    

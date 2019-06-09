@@ -1,0 +1,1 @@
+this folder is used for writing full point clouds.
