@@ -28,7 +28,7 @@ pcl_visualizer::~pcl_visualizer(){
 void pcl_visualizer::add_pcd_to_viewer(string fixed_vis_pth, string moving_vis_pth, Eigen::Affine3f transform){
 
     // accumulate transformation
-    accum_transform = transform * accum_transform.matrix();
+    accum_transform = accum_transform * transform.matrix();
 
     // load point clouds for visualization
     if(pcl::io::loadPCDFile<pcl::PointXYZRGB>(fixed_vis_pth, fixed_vis)==-1)
