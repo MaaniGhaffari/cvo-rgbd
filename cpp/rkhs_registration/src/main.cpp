@@ -1,5 +1,4 @@
 #include "rkhs_se3.hpp"
-// #include "pcl_visualizer.hpp"
 
 void load_file_name(string assoc_pth, vector<string> &vstrRGBName, \
                     vector<string> &vstrRGBPth, vector<string> &vstrDepPth);
@@ -21,7 +20,6 @@ int main(int argc, char** argv){
 
     // create our registration class
     cvo::rkhs_se3 cvo;
-    // cvo::pcl_visualizer visualizer;
 
     // load associate file
     vector<string> vstrRGBName;     // vector for image names
@@ -43,13 +41,9 @@ int main(int argc, char** argv){
     // fPoseQtTxt << "index, file_name, qw, qx, qy, qz, tx, ty, tz" << endl;
 
     // loop through all the images in associate files
-    // change this for loop to desired number of images for alignment
     for(int i=0;i<num_img;i++){
         string pcd_pth = ds_folder + vstrRGBName[i] + ".pcd";
         string pcd_dso_pth = dso_folder + vstrRGBName[i] + ".pcd";
-
-        // string fixed_vis_pth;
-        // string moving_vis_pth = dense_folder + vstrRGBName[i] + ".pcd";
 
         string RGB_pth = folder + vstrRGBPth[i];
         string dep_pth = folder + vstrDepPth[i];
@@ -89,24 +83,15 @@ int main(int argc, char** argv){
         // fPoseQtTxt<<cvo.accum_transform(0,3)<<" "<<cvo.accum_transform(1,3)<<" "<<cvo.accum_transform(2,3)<<" "; 
         // fPoseQtTxt<<q.x()<<" "<<q.y()<<" "<<q.z()<<" "<<q.w()<<"\n";
         
-        // if(cvo.init){
-        //     visualizer.add_pcd_to_viewer(fixed_vis_pth,moving_vis_pth,cvo.transform);
-        // }
-        // fixed_vis_pth = moving_vis_pth;
-        
     }
 
     // fPoseCsv.close();
     // fPoseQtTxt.close();
-
-    // DO NOT enable visualize() and visualize_unaligned_pcd() at the same time
-    // visualizer.visualize();
-    // visualizer.visualize_unaligned_pcd();
 }
 
 void load_file_name(string assoc_pth, vector<string> &vstrRGBName, \
                     vector<string> &vstrRGBPth, vector<string> &vstrDepPth){
-    ifstream fAssociation;
+    std::ifstream fAssociation;
     fAssociation.open(assoc_pth.c_str());
     while(!fAssociation.eof())
     {

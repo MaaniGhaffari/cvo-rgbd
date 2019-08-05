@@ -42,7 +42,7 @@
 #include <unsupported/Eigen/MatrixFunctions>
 #include <Eigen/StdVector>
 #include <boost/timer/timer.hpp>
-#include <omp.h>
+// #include <omp.h>
 #include <tbb/tbb.h>
 
 
