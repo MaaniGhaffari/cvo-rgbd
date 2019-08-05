@@ -13,6 +13,8 @@
 
 #include "pcl_visualizer.hpp"
 
+namespace cvo{
+
 pcl_visualizer::pcl_visualizer():
     init(false),
     frame_id(0),
@@ -92,4 +94,5 @@ void pcl_visualizer::visualize_unaligned_pcd(){
         viewer->spinOnce ();
         unmoved_viewer->spinOnce ();
     }
+}
 }

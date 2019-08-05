@@ -8,46 +8,62 @@
  *  @file   rkhs_se3.hpp
  *  @author Tzu-yuan Lin, Maani Ghaffari 
  *  @brief  Header file for contineuous visual odometry rkhs_se3 registration
- *  @date   May 31, 2019
+ *  @date   August 4, 2019
  **/
 
 #ifndef RKHS_SE3_H
 #define RKHS_SE3_H
 
-// #define EIGEN_USE_MKL_ALL
 
-#include <LieGroup.h>
+// #include "DataType.h"
+#include "LieGroup.h"
+#include "pcd_generator.hpp"
+
+#include <vector>
+#include <string.h>
 #include <iostream>
-#include <pcl/filters/filter.h>
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <pcl/io/pcd_io.h>
+#include <memory>
+#include <utility>
+#include <future>
+#include <thread>
+
+// #include <pcl/filters/filter.h>
+// #include <pcl/point_types.h>
+// #include <pcl/point_cloud.h>
+// #include <pcl/io/pcd_io.h>
+// #include <pcl/common/transforms.h>
+// #include <pcl/visualization/cloud_viewer.h>
 #include <Eigen/Geometry>
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/Eigenvalues>
+#include <Eigen/Cholesky> 
 #include <unsupported/Eigen/MatrixFunctions>
-#include <vector>
-#include <string.h>
-#include <pcl/common/transforms.h>
-#include <pcl/visualization/cloud_viewer.h>
+#include <Eigen/StdVector>
 #include <boost/timer/timer.hpp>
+#include <omp.h>
+#include <tbb/tbb.h>
+
+
 
 using namespace std;
 
+namespace cvo{
 class rkhs_se3{
 
     private:
         // private variables
-        pcl::PointCloud< pcl::PointXYZRGB > fixed;  // target point cloud, remain unchanged
-        pcl::PointCloud< pcl::PointXYZRGB > moving; // source point cloud, remain unchanged
-        pcl::PointCloud< pcl::PointXYZRGB > moved; // source point cloud that changes in each iteration
+        unique_ptr<frame> ptr_fixed_fr;
+        unique_ptr<frame> ptr_moving_fr;
+
+        unique_ptr<point_cloud> ptr_fixed_pcd;
+        unique_ptr<point_cloud> ptr_moving_pcd;
 
         int num_fixed;              // target point cloud counts
         int num_moving;             // source point cloud counts
-        Eigen::Matrix<float, Eigen::Dynamic, 3> cloud_x;    // target points represented as a matrix (num_fixed,3)
-        Eigen::Matrix<float, Eigen::Dynamic, 3> cloud_y;    // source points represented as a matrix (num_moving,3)
+        std::vector<Eigen::Vector3f> *cloud_x;    // target points represented as a matrix (num_fixed,3)
+        std::vector<Eigen::Vector3f> *cloud_y;    // source points represented as a matrix (num_moving,3)
 
         float ell;          // kernel characteristic length-scale
         float sigma;        // kernel signal variance (set as std)      
@@ -55,6 +71,13 @@ class rkhs_se3{
         float c;            // so(3) inner product scale     
         float d;            // R^3 inner product scale
         float color_scale;  // color space inner product scale
+        float c_ell;        // kernel characteristic length-scale for color kernel
+        float c_sigma;      // kernel signal variance for color kernel
+        float r_weight;
+        float g_weight;
+        float b_weight;
+        float dx_weight;
+        float dy_weight;
         int MAX_ITER;       // maximum number of iteration
         float eps;          // the program stops if norm(omega)+norm(v) < eps
         float eps_2;        // threshold for se3 distance
@@ -67,20 +90,21 @@ class rkhs_se3{
         Eigen::Vector3f omega;  // so(3) part of twist
         Eigen::Vector3f v;      // R^3 part of twist
 
+        // variables for cloud manipulations
+        typedef Eigen::Triplet<float> Trip;
+        tbb::concurrent_vector<Trip> A_trip_concur;
+
     public:
         // public variables
+        bool init;          // initialization indicator
         int iter;           // final iteration for display
         Eigen::Affine3f transform;  // transformation matrix
-
+        Eigen::Affine3f prev_transform;
+        Eigen::Affine3f accum_transform;
+        
     private:
         // private functions
         
-        /**
-         * @brief remove nan points in pcd
-         *        this function is currently unused
-         */
-        void remove_nan_points();
-
         /**
          * @brief a polynomial root finder
          * @param coef: coefficeints of the polynomial in descending order
@@ -100,6 +124,7 @@ class rkhs_se3{
          */
         inline void update_tf();
 
+
         /**
          * @brief compute color inner product of ith row in fixed and jth row in moving
          * @param i: index of desired row in fixed
@@ -108,6 +133,11 @@ class rkhs_se3{
          */
         inline float color_inner_product(const int i, const int j);
         
+        /**
+         * @brief compute color kernel
+         */
+        inline float color_kernel(const int i, const int j);
+
         /**
          * @brief isotropic (same length-scale for all dimensions) squared-exponential kernel
          * @param l: kernel characteristic length-scale, aka rkhs_se3.ell
@@ -122,11 +152,17 @@ class rkhs_se3{
          */
         void compute_flow();
         
+
         /**
          * @brief compute the integration step size
-         *        step will be updated in this function
+         *        step will be updated in  this function
          */
         void compute_step_size();
+
+        /**
+         * @brief transform cloud_y for current update
+         */
+        void transform_pcd();
 
     public:
         // public funcitons
@@ -138,7 +174,8 @@ class rkhs_se3{
         /**
          * @brief initialize new point cloud and extract pcd as matrices
          */
-        void set_pcd( string fixed_pth, string moving_pth);
+        void set_pcd(const int dataset_seq,const string& pcd_pth,const string& RGB_pth,const string& dep_pth,\
+                    const string& pcd_dso_pth);
 
         /**
          * @brief align two rgbd pointcloud
@@ -146,4 +183,5 @@ class rkhs_se3{
          */
         void align();
 };
+}
 #endif  // RKHS_SE3_H

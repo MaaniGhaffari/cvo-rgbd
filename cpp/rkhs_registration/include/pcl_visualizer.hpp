@@ -25,7 +25,7 @@
 #include <string.h>
 
 using namespace std;
-
+namespace cvo{
 class pcl_visualizer{
 
     private:
@@ -61,5 +61,5 @@ class pcl_visualizer{
          **/
         void visualize_unaligned_pcd();
 };
-
+}
 #endif  // PCL_VISUALIZER_H
