@@ -5,13 +5,11 @@ void load_file_name(string assoc_pth, vector<string> &vstrRGBName, \
 
 int main(int argc, char** argv){
     
-    // string dataset = "freiburg3_structure_notexture_far";
     string dataset = "freiburg1_desk";
     int dataset_seq = 1;
 
     // downsampled pcd from tum rgbd dataset
     string folder = "../../../../data/rgbd_dataset/" + dataset + "/";
-    // string folder = "/media/justin/LaCie/data/rgbd_dataset/" + dataset + "/";
     string ds_folder = folder + "pcd_ds/";
     string dso_folder = folder + "pcd_dso/";
     string dense_folder = folder + "pcd_full/";

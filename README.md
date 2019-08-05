@@ -6,11 +6,13 @@ For a toy example of registration using Kinect data in MATLAB run `matlab/run_to
 
 ## Dependency
 * ubuntu 16.04
-* MATLAB
-* PointCloudLibrary 1.4
+* C++ 11 or higher
 * Eigen3
+* OpenCV 3.0.0
 * Intel C++ compiler (For better speed performance)
-* Intel MKL
+* Intel TBB
+* OpenMP
+* Boost (for timing only)
 
 ## Environment Setting
 * Add the following two source command to your ```.bashrc```, detailed instructions can be found [here](https://software.intel.com/en-us/articles/setting-up-the-build-environment-for-using-intel-c-or-fortran-compilers):
@@ -37,13 +39,17 @@ mkdir pcd_ds
 
 
 ## cpp Code
+Modify ```line 11``` in ```main.cpp``` to your data folder.
+
 To compile the cpp code, type the command below:
 ``` 
-cd dev/cpp/rkhs_se3_registration
+cd cpp/rkhs_se3_registration
 mkdir build
 cd build
 ```
-If this is your first time compiling using intel compiler, set your cmake varaibles by the following command: ([learn more here](https://gitlab.kitware.com/cmake/community/wikis/FAQ#how-do-i-use-a-different-compiler))
+If this is your first time compiling using intel compiler, type ```source PATH_TO_YOUR_INTEL_COMPILER/linux/bin/compilervars.sh intel64``` 
+
+Set your cmake varaibles by the following command: ([learn more here](https://gitlab.kitware.com/cmake/community/wikis/FAQ#how-do-i-use-a-different-compiler))
 ```
 cmake .. -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc
 make
