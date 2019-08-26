@@ -25,6 +25,7 @@ namespace cvo{
     }
 
     pcd_generator::~pcd_generator(){
+        delete map;
     }
 
     void pcd_generator::make_pyramid(frame* ptr_fr){
