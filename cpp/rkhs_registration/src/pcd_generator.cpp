@@ -305,6 +305,12 @@ namespace cvo{
         get_features(ptr_fr, ptr_pcd);
 
         ptr_pcd->num_points = num_selected;
+
+        for(int i=0;i<PYR_LEVELS;i++)
+		{
+			delete[] ptr_fr->dI_pyr[i];
+			delete[] ptr_fr->abs_squared_grad[i];
+		}
     }
 
     // void pcd_generator::write_pcd_to_disk(point_cloud* ptr_pcd, const string& folder){

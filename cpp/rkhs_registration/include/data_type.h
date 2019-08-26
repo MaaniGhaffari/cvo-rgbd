@@ -39,14 +39,6 @@ struct frame{
     Eigen::Vector3f* dI_pyr[PYR_LEVELS];  // pyramid for dI. dI_pyr[0] = dI
     float* abs_squared_grad[PYR_LEVELS];  // pyramid for absolute squared gradient (dx^2+dy^2)
 
-    // destructor
-    ~frame(){
-        // release memories
-        for(int i=0;i<PYR_LEVELS;i++){
-			delete[] dI_pyr[i];
-			delete[] abs_squared_grad[i];
-		}
-    }
 };
 
 struct point_cloud{
