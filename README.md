@@ -10,6 +10,7 @@ For a toy example of registration using Kinect data in MATLAB run `matlab/run_to
 * C++ 11 or higher
 * Eigen3
 * OpenCV 3.0.0
+* PCL 1.4 (For saving pcd files)
 * Intel C++ compiler (For better speed performance)
 * Intel TBB
 * Boost (for timing only)
