@@ -49,13 +49,13 @@ To run cvo code:
 ```
 ./cvo $path_to_data $tum_sequence_number(1 for fr1, 2 for fr2, 3 for fr3)
 ```
-A txt file containing the trajectory ```cvo_poses_qt.txt``` will be generated in your data folder.
+A txt file containing the trajectory, ```cvo_poses_qt.txt```, will be generated in your data folder.
 
 To run adaptive cvo code:
 ```
 ./adaptive_cvo $path_to_data $tum_sequence_number(1 for fr1, 2 for fr2, 3 for fr3)
 ```
-A txt file containing the trajectory ```acvo_poses_qt.txt``` will be generated in your data folder.
+A txt file containing the trajectory, ```acvo_poses_qt.txt```, will be generated in your data folder.
 
 An example of how to run the code is in the script folder.
 
