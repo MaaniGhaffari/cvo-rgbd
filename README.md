@@ -1,5 +1,6 @@
 # CVO/Adaptive CVO
-Continuous Direct Sparse Visual Odometry/ Adaptive Continous Visual Odometry from RGB-D Images.
+* Continuous Direct Sparse Visual Odometry from RGB-D Images.
+* Adaptive Continous Visual Odometry from RGB-D Images.
 
 ## MATLAB Examples for CVO
 For a toy example of registration using Kinect data in MATLAB run `matlab/run_toy_example.m`
@@ -23,6 +24,7 @@ source opt/intel/compilers_and_libraries/linux/bin/compilervars.sh intel64
 
 ## Data
 * Download TUM RGBD dataset from [here](https://vision.in.tum.de/data/datasets/rgbd-dataset/download).
+* Generate the association files using 
 
 ## cpp Code
 To compile the cpp code, type the command below:
