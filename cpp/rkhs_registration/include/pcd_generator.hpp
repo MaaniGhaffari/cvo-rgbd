@@ -8,7 +8,7 @@
  *  @file   pcd_generator.hpp
  *  @author Tzu-yuan Lin, Maani Ghaffari 
  *  @brief  Header file for point cloud generator
- *  @date   July 12, 2019
+ *  @date   September 20, 2019
  **/
 
 #ifndef PCD_GENERATOR_H
@@ -21,9 +21,10 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/core/mat.hpp>
-// #include <pcl/io/pcd_io.h>
-// #include <pcl/point_types.h>
-
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+// #include <pcl/visualization/cloud_viewer.h>
 
 using namespace std;
 
@@ -31,14 +32,19 @@ namespace cvo{
 class pcd_generator{
     private:
         // private variables
-        
         int num_want;
         int num_selected;
-        
+        int dep_thres;
+
         int w_pyr[PYR_LEVELS];  // width for each pyramid
         int h_pyr[PYR_LEVELS];
 
         float* map; // map for selected pixels
+
+        // pcl::visualization::PCLVisualizer::Ptr ds_viewer;
+        int img_idx;
+
+        camera_info cam_info;
 
     public:
         // public variables
@@ -71,7 +77,7 @@ class pcd_generator{
         /**
          * @brief get features from pixels (R,G,B,dx,dy)
          **/
-        void get_features(frame* ptr_fr, point_cloud* ptr_pcd);
+        void get_features(const int feature_type, frame* ptr_fr, point_cloud* ptr_pcd);
 
         
 
@@ -85,18 +91,20 @@ class pcd_generator{
         /**
          * @brief load image and preprocess for point selector
          */
-        void load_image(const string& RGB_pth, const string& dep_pth,\
+        void load_image(const cv::Mat& RGB_img,const cv::Mat& dep_img,\
                         frame* ptr_fr);
 
         /**
          * @brief select points and generate point clouds
+         * @param feature_type: 0: HSV+gradient and normalized to 0~1
+         *                      1: RGB+gradient without normalization
          */
-        void create_pointcloud(frame* ptr_fr, point_cloud* ptr_pcd);
+        void create_pointcloud(const int feature_type,frame* ptr_fr, point_cloud* ptr_pcd);
 
         /**
          * @brief write point cloud as pcd files. this function requires pcl library
          */
-        // void write_pcd_to_disk(point_cloud* ptr_pcd, const string& folder);
+        void create_pcl_pointcloud(frame* ptr_fr, point_cloud* ptr_pcd);
 
 
 };

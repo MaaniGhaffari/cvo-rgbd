@@ -5,17 +5,17 @@
  * -------------------------------------------------------------------------- */
 
 /**
- *  @file   rkhs_se3.cpp
+ *  @file   cvo.cpp
  *  @author Tzu-yuan Lin, Maani Ghaffari 
- *  @brief  Source file for contineuous visual odometry rkhs_se3 registration
- *  @date   August 4, 2019
+ *  @brief  Source file for contineuous visual odometry
+ *  @date   september 20, 2019
  **/
 
-#include "rkhs_se3.hpp"
+#include "cvo.hpp"
 
 namespace cvo{
 
-rkhs_se3::rkhs_se3():
+cvo::cvo():
     // initialize parameters
     init(false),           // initialization indicator
     ptr_fixed_fr(new frame),
@@ -47,10 +47,10 @@ rkhs_se3::rkhs_se3():
 {
 }
 
-rkhs_se3::~rkhs_se3(){
+cvo::~cvo(){
 }
 
-inline Eigen::VectorXcf rkhs_se3::poly_solver(const Eigen::VectorXf& coef){
+inline Eigen::VectorXcf cvo::poly_solver(const Eigen::VectorXf& coef){
     // extract order
     int order = coef.size()-1;
     Eigen::VectorXcf roots;
@@ -68,7 +68,7 @@ inline Eigen::VectorXcf rkhs_se3::poly_solver(const Eigen::VectorXf& coef){
     return roots;
 }
 
-inline float rkhs_se3::dist_se3(const Eigen::Matrix3f& R, const Eigen::Vector3f& T){
+inline float cvo::dist_se3(const Eigen::Matrix3f& R, const Eigen::Vector3f& T){
     // create transformation matrix
     Eigen::Matrix4f temp_transform = Eigen::Matrix4f::Identity();
     temp_transform.block<3,3>(0,0)=R;
@@ -80,14 +80,14 @@ inline float rkhs_se3::dist_se3(const Eigen::Matrix3f& R, const Eigen::Vector3f&
     return d;
 }
 
-inline void rkhs_se3::update_tf(){
+inline void cvo::update_tf(){
     // transform = [R', -R'*T; 0,0,0,1]
     transform.matrix().block<3,3>(0,0) = R.transpose();
     transform.matrix().block<3,1>(0,3) = -R.transpose()*T;
 }
 
 
-inline float rkhs_se3::color_kernel(const int i, const int j){
+inline float cvo::color_kernel(const int i, const int j){
     Eigen::Matrix<float,5,1> feature_x = ptr_fixed_pcd->features.row(i).transpose();
     Eigen::Matrix<float,5,1> feature_y = ptr_moving_pcd->features.row(j).transpose();
 
@@ -96,47 +96,72 @@ inline float rkhs_se3::color_kernel(const int i, const int j){
 
 
 
-void rkhs_se3::se_kernel(const float l, const float s2){
+void cvo::se_kernel(const float l, const float s2){
     A_trip_concur.clear();
     // convert k threshold to d2 threshold (so that we only need to calculate k when needed)
     float d2_thres = -2.0*l*l*log(sp_thres/s2);
     float d2_c_thres = -2.0*c_ell*c_ell*log(sp_thres/c_sigma/c_sigma);
 
+
+    /** 
+     * kdtreeeeeeeeeeeeeeeeeeeee
+     **/
+
+    typedef KDTreeVectorOfVectorsAdaptor<cloud_t, float>  kd_tree_t;
+
+	kd_tree_t mat_index(3 /*dim*/, (*cloud_y), 10 /* max leaf */ );
+	mat_index.index->buildIndex();
+
     // loop through points
     tbb::parallel_for(int(0),num_fixed,[&](int i){
+    // for(int i=0; i<num_fixed; ++i){
 
-        Eigen::Vector3f cloud_xi = (*cloud_x)[i];
+        const float search_radius = d2_thres;
+		std::vector<std::pair<size_t,float>>  ret_matches;
+
+		nanoflann::SearchParams params;
+		//params.sorted = false;
+
+		const size_t nMatches = mat_index.index->radiusSearch(&(*cloud_x)[i](0), search_radius, ret_matches, params);
+
+        // Eigen::Vector3f cloud_xi = (*cloud_x)[i];
         Eigen::Matrix<float,5,1> feature_x = ptr_fixed_pcd->features.row(i).transpose();
         
-        for(int j=0; j<num_moving; j++){
+        // std::cout<<"nMatches: "<<nMatches<<std::endl;
+
+        // for(int j=0; j<num_moving; j++){
+        for(size_t j=0; j<nMatches; ++j){
+            int idx = ret_matches[j].first;
+            float d2 = ret_matches[j].second;
             // d2 = (x-y)^2
             float k = 0;
             float ck = 0;
             float d2_color = 0;
             float a = 0;
-            float d2 = 100;
-            d2 = (cloud_xi-(*cloud_y)[j]).squaredNorm();
+            // float d2 = 100;
+            // d2 = (cloud_xi-(*cloud_y)[j]).squaredNorm();
             if(d2<d2_thres){
                 // d2_color = color_kernel(i,j);
-                Eigen::Matrix<float,5,1> feature_y = ptr_moving_pcd->features.row(j).transpose();
+                Eigen::Matrix<float,5,1> feature_y = ptr_moving_pcd->features.row(idx).transpose();
                 d2_color = ((feature_x-feature_y).squaredNorm());
 
                 if(d2_color<d2_c_thres){
                     k = s2*exp(-d2/(2.0*l*l));
                     ck = c_sigma*c_sigma*exp(-d2_color/(2.0*c_ell*c_ell));
                     a = ck*k;
-                    if (a > sp_thres) A_trip_concur.push_back(Trip(i,j,a));
+                    if (a > sp_thres) A_trip_concur.push_back(Trip_t(i,idx,a));
                 }
             }
         }
     });
+    // }
     // form A
     A.setFromTriplets(A_trip_concur.begin(), A_trip_concur.end());
     A.makeCompressed();
 }
 
 
-void rkhs_se3::compute_flow(){
+void cvo::compute_flow(){
     // compute SE kernel
     se_kernel(ell, sigma*sigma);
 
@@ -185,7 +210,7 @@ void rkhs_se3::compute_flow(){
 }
 
 
-void rkhs_se3::compute_step_size(){
+void cvo::compute_step_size(){
     // compute skew matrix
     Eigen::Matrix3f omega_hat = skew(omega);
     
@@ -234,16 +259,16 @@ void rkhs_se3::compute_step_size(){
             // diff_xy = x[i] - y[used_idx[j]]
             auto diff_xy = ((*cloud_x)[i] - (*cloud_y)[idx]);    
             // beta_i = -1/l^2 * dot(xiz,diff_xy)
-            float beta_ij = (-2.0*temp_coef * xiz.row(idx)*diff_xy)(0,0);
+            float beta_ij = (-2.0*temp_coef * xiz.row(idx)*diff_xy).value();
             // gamma_i = -1/(2*l^2) * (norm(xiz).^2 + 2*dot(xi2z,diff_xy))
             float gamma_ij = (-temp_coef * (normxiz2.row(idx)\
-                            + 2.0*xi2z.row(idx)*diff_xy))(0,0);
+                            + 2.0*xi2z.row(idx)*diff_xy)).value();
             // delta_i = 1/l^2 * (dot(-xiz,xi2z) + dot(-xi3z,diff_xy))
             float delta_ij = (2.0*temp_coef * (xiz_dot_xi2z.row(idx)\
-                            + (-xi3z.row(idx)*diff_xy)))(0,0);
+                            + (-xi3z.row(idx)*diff_xy))).value();
             // epsil_i = -1/(2*l^2) * (norm(xi2z).^2 + 2*dot(xiz,xi3z) + 2*dot(xi4z,diff_xy))
             float epsil_ij = (-temp_coef * (epsil_const.row(idx)\
-                            + 2.0*xi4z.row(idx)*diff_xy))(0,0);
+                            + 2.0*xi4z.row(idx)*diff_xy)).value();
 
             float A_ij = it.value();
 
@@ -282,7 +307,7 @@ void rkhs_se3::compute_step_size(){
     step = step>0.8 ? 0.8:step;
 }
 
-void rkhs_se3::transform_pcd(){
+void cvo::transform_pcd(){
     tbb::parallel_for(int(0), num_moving, [&]( int j ){
         (*cloud_y)[j] = transform.linear()*ptr_moving_pcd->positions[j]+transform.translation();
     });
@@ -291,8 +316,7 @@ void rkhs_se3::transform_pcd(){
 
 
 
-void rkhs_se3::set_pcd(const int dataset_seq, const string& pcd_pth,const string& RGB_pth,const string& dep_pth, \
-                        const string& pcd_dso_pth){
+void cvo::set_pcd(const int dataset_seq ,const cv::Mat& RGB_img,const cv::Mat& dep_img, string pcd_pth, string pcd_dso_pth){
 
     // create pcd_generator class
     pcd_generator pcd_gen;
@@ -300,21 +324,21 @@ void rkhs_se3::set_pcd(const int dataset_seq, const string& pcd_pth,const string
     
     // if it's the first image
     if(init == false){
-
-        pcd_gen.load_image(RGB_pth,dep_pth,ptr_fixed_fr.get());
-        pcd_gen.create_pointcloud(ptr_fixed_fr.get(), ptr_fixed_pcd.get());
-        // pcd_gen.write_pcd_to_disk(ptr_fixed_pcd.get(), pcd_dso_pth);
-        
+        std::cout<<"initializing cvo..."<<std::endl;
+        pcd_gen.load_image(RGB_img,dep_img,ptr_fixed_fr.get());
+        pcd_gen.create_pointcloud(1,ptr_fixed_fr.get(), ptr_fixed_pcd.get());
+        std::cout<<"first pcd generated!"<<std::endl;
         init = true;
+        // write_pcl_point_cloud_to_disk(ptr_fixed_pcd.get(),pcd_pth,pcd_dso_pth);
         return;
     }
 
     ptr_moving_fr.reset(new frame);
     ptr_moving_pcd.reset(new point_cloud);
 
-    pcd_gen.load_image(RGB_pth,dep_pth,ptr_moving_fr.get());
-    pcd_gen.create_pointcloud(ptr_moving_fr.get(), ptr_moving_pcd.get());
-    // pcd_gen.write_pcd_to_disk(ptr_moving_pcd.get(), pcd_dso_pth);
+    pcd_gen.load_image(RGB_img,dep_img,ptr_moving_fr.get());
+    pcd_gen.create_pointcloud(1,ptr_moving_fr.get(), ptr_moving_pcd.get());
+    // write_pcl_point_cloud_to_disk(ptr_moving_pcd.get(),pcd_pth,pcd_dso_pth);
 
     // get total number of points
     num_fixed = ptr_fixed_pcd->num_points;
@@ -334,7 +358,7 @@ void rkhs_se3::set_pcd(const int dataset_seq, const string& pcd_pth,const string
 
 
 
-void rkhs_se3::align(){
+void cvo::align(){
     int n = tbb::task_scheduler_init::default_num_threads();
     std::cout<<"num_thread: "<<n<<std::endl;
 
@@ -393,5 +417,20 @@ void rkhs_se3::align(){
     ptr_fixed_pcd = std::move(ptr_moving_pcd);
 
     delete cloud_y;
+}
+
+void cvo::run_cvo(const int dataset_seq,const cv::Mat& RGB_img,const cv::Mat& dep_img, string pcd_pth, string pcd_dso_pth){
+
+    if(init == false){
+        set_pcd(dataset_seq,RGB_img, dep_img, pcd_pth, pcd_dso_pth);
+    }
+    else{
+        set_pcd(dataset_seq, RGB_img, dep_img, pcd_pth, pcd_dso_pth);
+        align();
+        
+        std::cout<<"Total iterations: "<<iter<<std::endl;
+        std::cout<<"RKHS-SE(3) Object Transformation Estimate: \n"<<transform.matrix()<<std::endl;
+    }
+
 }
 }

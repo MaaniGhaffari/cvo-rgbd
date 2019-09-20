@@ -5,19 +5,21 @@
  * -------------------------------------------------------------------------- */
 
 /**
- *  @file   rkhs_se3.hpp
+ *  @file   cvo.hpp
  *  @author Tzu-yuan Lin, Maani Ghaffari 
- *  @brief  Header file for contineuous visual odometry rkhs_se3 registration
- *  @date   August 4, 2019
+ *  @brief  Header file for contineuous visual odometry
+ *  @date   September 20, 2019
  **/
 
-#ifndef RKHS_SE3_H
-#define RKHS_SE3_H
+#ifndef CVO_H
+#define CVO_H
 
 
 // #include "DataType.h"
 #include "LieGroup.h"
 #include "pcd_generator.hpp"
+#include "../thirdparty/nanoflann.hpp"
+#include "../thirdparty/KDTreeVectorOfVectorsAdaptor.h"
 
 #include <vector>
 #include <string.h>
@@ -48,9 +50,10 @@
 
 
 using namespace std;
+using namespace nanoflann;
 
 namespace cvo{
-class rkhs_se3{
+class cvo{
 
     private:
         // private variables
@@ -62,8 +65,8 @@ class rkhs_se3{
 
         int num_fixed;              // target point cloud counts
         int num_moving;             // source point cloud counts
-        std::vector<Eigen::Vector3f> *cloud_x;    // target points represented as a matrix (num_fixed,3)
-        std::vector<Eigen::Vector3f> *cloud_y;    // source points represented as a matrix (num_moving,3)
+        cloud_t *cloud_x;    // target points represented as a matrix (num_fixed,3)
+        cloud_t *cloud_y;    // source points represented as a matrix (num_moving,3)
 
         float ell;          // kernel characteristic length-scale
         float sigma;        // kernel signal variance (set as std)      
@@ -91,8 +94,9 @@ class rkhs_se3{
         Eigen::Vector3f v;      // R^3 part of twist
 
         // variables for cloud manipulations
-        typedef Eigen::Triplet<float> Trip;
-        tbb::concurrent_vector<Trip> A_trip_concur;
+        typedef Eigen::Triplet<float> Trip_t;
+        // std::vector<Trip> A_trip_concur;
+        tbb::concurrent_vector<Trip_t> A_trip_concur;
 
     public:
         // public variables
@@ -140,8 +144,8 @@ class rkhs_se3{
 
         /**
          * @brief isotropic (same length-scale for all dimensions) squared-exponential kernel
-         * @param l: kernel characteristic length-scale, aka rkhs_se3.ell
-         * @prarm s2: signal variance, square of rkhs_se3.sigma
+         * @param l: kernel characteristic length-scale, aka cvo.ell
+         * @prarm s2: signal variance, square of cvo.sigma
          * @return k: n-by-m kernel matrix 
          */
         void se_kernel(const float l, const float s2);
@@ -168,20 +172,24 @@ class rkhs_se3{
         // public funcitons
 
         // constructor and destructor
-        rkhs_se3();
-        ~rkhs_se3();
+        cvo();
+        ~cvo();
 
         /**
          * @brief initialize new point cloud and extract pcd as matrices
          */
-        void set_pcd(const int dataset_seq,const string& pcd_pth,const string& RGB_pth,const string& dep_pth,\
-                    const string& pcd_dso_pth);
+        void set_pcd(const int dataset_seq,const cv::Mat& RGB_img,const cv::Mat& dep_img, string pcd_pth, string pcd_dso_pth);
 
         /**
          * @brief align two rgbd pointcloud
          *        the function will iterate MAX_ITER times unless break conditions are met
          */
         void align();
+
+        /**
+        * @brief run cvo
+        */ 
+        void run_cvo(const int dataset_seq,const cv::Mat& RGB_img,const cv::Mat& dep_img, string pcd_pth, string pcd_dso_pth);
 };
 }
 #endif  // RKHS_SE3_H

@@ -1,7 +1,7 @@
-# cvo-rgbd
-Continuous Direct Sparse Visual Odometry from RGB-D Images.
+# CVO/Adaptive CVO
+Continuous Direct Sparse Visual Odometry/ Adaptive Continous Visual Odometry from RGB-D Images.
 
-## MATLAB Examples
+## MATLAB Examples for CVO
 For a toy example of registration using Kinect data in MATLAB run `matlab/run_toy_example.m`
 
 ## Dependency
@@ -11,7 +11,6 @@ For a toy example of registration using Kinect data in MATLAB run `matlab/run_to
 * OpenCV 3.0.0
 * Intel C++ compiler (For better speed performance)
 * Intel TBB
-* OpenMP
 * Boost (for timing only)
 
 ## Environment Setting
@@ -23,23 +22,16 @@ source opt/intel/compilers_and_libraries/linux/bin/compilervars.sh intel64
 ``` 
 
 ## Data
-* Download TUM RGBD dataset from [here](https://vision.in.tum.de/data/datasets/rgbd-dataset/download) and unzip it into the corresponding folder in ```data/rgbd_dataset/```.
+* Download TUM RGBD dataset from [here](https://vision.in.tum.de/data/datasets/rgbd-dataset/download).
 
 ## cpp Code
-Modify ```line 11``` in ```main.cpp``` to your data folder.
-
 To compile the cpp code, type the command below:
 ``` 
 cd cpp/rkhs_se3_registration
 mkdir build
 cd build
 ```
-If this is your first time compiling using intel compiler, type: 
-```
-source PATH_TO_YOUR_INTEL_COMPILER/linux/bin/compilervars.sh intel64
-``` 
-
-Set your cmake varaibles by the following command: ([learn more here](https://gitlab.kitware.com/cmake/community/wikis/FAQ#how-do-i-use-a-different-compiler))
+If this is your first time compiling using intel compiler, set your cmake varaibles by the following command: ([learn more here](https://gitlab.kitware.com/cmake/community/wikis/FAQ#how-do-i-use-a-different-compiler))
 ```
 cmake .. -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc
 make
@@ -49,10 +41,21 @@ Next time, you only need to do the following:
 cmake ..
 make
 ```
-Then an execute file ```testrkhs``` will be generated in build. To run it, simply type:
+Then executable files ```cvo``` and ```adaptive_cvo``` will be generated in build.
+
+To run cvo code: 
 ```
-./testrkhs
+./cvo $path_to_data $tum_sequence_number(1 for fr1, 2 for fr2, 3 for fr3)
 ```
+A txt file containing the trajectory ```cvo_poses_qt.txt``` will be generated in your data folder.
+
+To run adaptive cvo code:
+```
+./adaptive_cvo $path_to_data $tum_sequence_number(1 for fr1, 2 for fr2, 3 for fr3)
+```
+A txt file containing the trajectory ```acvo_poses_qt.txt``` will be generated in your data folder.
+
+An example of how to run the code is in the script folder.
 
 ## Citations
 * Maani Ghaffari, William Clark, Anthony Bloch, Ryan M. Eustice, and Jessy W. Grizzle. "Continuous Direct Sparse Visual Odometry from RGB-D Images," in Proceedings of Robotics: Science and Systems, Freiburg, Germany, June 2019. https://arxiv.org/abs/1904.02266
@@ -66,3 +69,5 @@ Then an execute file ```testrkhs``` will be generated in build. To run it, simpl
     MONTH     = {June} 
 } 
 ```
+
+

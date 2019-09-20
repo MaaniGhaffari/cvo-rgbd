@@ -381,28 +381,28 @@ Eigen::Vector3i PixelSelector::select(const cvo::frame* const ptr_fr,
 					}
 					if(bestIdx3==-2) continue;
 
-					// float ag1 = mapmax1[(int)(xf*0.5f+0.25f) + (int)(yf*0.5f+0.25f)*w1];
-					// if(ag1 > pixelTH1*thFactor)
-					// {
-					// 	Vec2f ag0d = map0[idx].tail<2>();
-					// 	float dirNorm = fabsf((float)(ag0d.dot(dir3)));
-					// 	if(!setting_selectDirectionDistribution) dirNorm = ag1;
+					float ag1 = mapmax1[(int)(xf*0.5f+0.25f) + (int)(yf*0.5f+0.25f)*w1];
+					if(ag1 > pixelTH1*thFactor)
+					{
+						Vec2f ag0d = map0[idx].tail<2>();
+						float dirNorm = fabsf((float)(ag0d.dot(dir3)));
+						if(!setting_selectDirectionDistribution) dirNorm = ag1;
 
-					// 	if(dirNorm > bestVal3)
-					// 	{ bestVal3 = dirNorm; bestIdx3 = idx; bestIdx4 = -2;}
-					// }
-					// if(bestIdx4==-2) continue;
+						if(dirNorm > bestVal3)
+						{ bestVal3 = dirNorm; bestIdx3 = idx; bestIdx4 = -2;}
+					}
+					if(bestIdx4==-2) continue;
 
-					// float ag2 = mapmax2[(int)(xf*0.25f+0.125) + (int)(yf*0.25f+0.125)*w2];
-					// if(ag2 > pixelTH2*thFactor)
-					// {
-					// 	Vec2f ag0d = map0[idx].tail<2>();
-					// 	float dirNorm = fabsf((float)(ag0d.dot(dir4)));
-					// 	if(!setting_selectDirectionDistribution) dirNorm = ag2;
+					float ag2 = mapmax2[(int)(xf*0.25f+0.125) + (int)(yf*0.25f+0.125)*w2];
+					if(ag2 > pixelTH2*thFactor)
+					{
+						Vec2f ag0d = map0[idx].tail<2>();
+						float dirNorm = fabsf((float)(ag0d.dot(dir4)));
+						if(!setting_selectDirectionDistribution) dirNorm = ag2;
 
-					// 	if(dirNorm > bestVal4)
-					// 	{ bestVal4 = dirNorm; bestIdx4 = idx; }
-					// }
+						if(dirNorm > bestVal4)
+						{ bestVal4 = dirNorm; bestIdx4 = idx; }
+					}
 				}
 
 				if(bestIdx2>0)
@@ -413,19 +413,19 @@ Eigen::Vector3i PixelSelector::select(const cvo::frame* const ptr_fr,
 				}
 			}
 
-			// if(bestIdx3>0)
-			// {
-			// 	map_out[bestIdx3] = 2;
-			// 	bestVal4 = 1e10;
-			// 	n3++;
-			// }
+			if(bestIdx3>0)
+			{
+				map_out[bestIdx3] = 2;
+				bestVal4 = 1e10;
+				n3++;
+			}
 		}
 
-		// if(bestIdx4>0)
-		// {
-		// 	map_out[bestIdx4] = 4;
-		// 	n4++;
-		// }
+		if(bestIdx4>0)
+		{
+			map_out[bestIdx4] = 4;
+			n4++;
+		}
 	}
 
 
