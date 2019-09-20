@@ -25,7 +25,7 @@ source opt/intel/compilers_and_libraries/linux/bin/compilervars.sh intel64
 
 ## Data
 * Download TUM RGBD dataset from [here](https://vision.in.tum.de/data/datasets/rgbd-dataset/download).
-* Generate the association files using 
+* Generate the association files using ```data/rgbd_dataset/rgbd_benchmark_tools/assoc.sh```.
 
 ## cpp Code
 To compile the cpp code, type the command below:
