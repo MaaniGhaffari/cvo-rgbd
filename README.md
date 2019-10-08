@@ -1,6 +1,6 @@
 # CVO/Adaptive CVO
-* Continuous Direct Sparse Visual Odometry from RGB-D Images.
-* Adaptive Continous Visual Odometry from RGB-D Images.
+* <a href="https://arxiv.org/pdf/1904.02266.pdf" target="_blank">Continuous Direct Sparse Visual Odometry from RGB-D Images.</a>
+* <a href="https://arxiv.org/pdf/1910.00713.pdf" target="_blank">Adaptive Continous Visual Odometry from RGB-D Images.</a>
 
 ## MATLAB Examples for CVO
 For a toy example of registration using Kinect data in MATLAB run `matlab/run_toy_example.m`
@@ -72,5 +72,12 @@ An example of how to run the code is in the script folder.
     MONTH     = {June} 
 } 
 ```
-
-
+* Tzu-Yuan Lin, William Clark, Ryan M. Eustice, Jessy W. Grizzle, Anthony Bloch, and Maani Ghaffari. "Adaptive Continuous Visual Odometry from RGB-D Images." arXiv preprint arXiv:1910.00713, 2019. https://arxiv.org/abs/1910.00713
+```
+@article{lin2019adaptive,
+  title={Adaptive Continuous Visual Odometry from RGB-D Images},
+  author={Lin, Tzu-Yuan and Clark, William and Eustice, Ryan M and Grizzle, Jessy W and Bloch, Anthony and Ghaffari, Maani},
+  journal={arXiv preprint arXiv:1910.00713},
+  year={2019}
+}
+```
